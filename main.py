@@ -219,7 +219,7 @@ def main():
     else:
         wandb.login()
 
-    wandb.init(project='recvis2024', config=vars(args))
+    wandb.init(project='recvis2024', name="efficientnetv2_l", config=vars(args))
 
 
     # Check if cuda is available
@@ -255,8 +255,8 @@ def main():
     )
 
     # Setup optimizer
-    optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
-    # optimizer = AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr, weight_decay=1e-4)
+    # optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
+    optimizer = AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr, weight_decay=1e-4)
 
     # Loop over the epochs
     best_val_loss = 1e8

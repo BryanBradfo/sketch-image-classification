@@ -1,10 +1,11 @@
-# import torch.nn as nn
-# import torch.nn.functional as F
-# from torchvision import models
-# import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torchvision import models
+import torch
+from transformers import CLIPModel, CLIPProcessor
 
 
-# nclasses = 500
+nclasses = 500
 
 
 # # class Net(nn.Module):
@@ -28,7 +29,7 @@
 
 #     def __init__(self):
 #         super(Net, self).__init__()
-#         self.model = models.efficientnet_v2_s(weights='DEFAULT')
+#         self.model = models.efficientnet_v2_l(weights='DEFAULT')
 
 #         n_freeze = 0
 #         for i, block in enumerate(self.model.features):
@@ -42,30 +43,48 @@
 #         x = self.model(x)
 #         return x
 
-
-import torch
-import torch.nn as nn
-from transformers import CLIPModel
-
-nclasses = 500  
-
 class Net(nn.Module):
-
-    def __init__(self):
+    def __init__(self, num_classes=500):
         super(Net, self).__init__()
-        self.model = CLIPModel.from_pretrained("laion/CLIP-ViT-H-14-laion2B-s32B-b79K")
-        for param in self.model.parameters():
+        self.clip_model = CLIPModel.from_pretrained("openai/clip-vit-large-patch14")
+        for param in self.clip_model.parameters():
             param.requires_grad = False
-        num_features = self.model.visual_projection.out_features
-        self.classifier = nn.Linear(num_features, nclasses)
-        for param in self.classifier.parameters():
-            param.requires_grad = True
+        image_embed_dim = self.clip_model.visual_projection.in_features
+        self.classifier = nn.Sequential(
+            nn.Linear(image_embed_dim, 1024),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            nn.Linear(1024, num_classes)
+        )
 
     def forward(self, x):
-        image_features = self.model.get_image_features(pixel_values=x)
-        image_features = image_features / image_features.norm(p=2, dim=-1, keepdim=True)
-        x = self.classifier(image_features)
-        return x
+        image_features = self.clip_model.vision_model(pixel_values=x).pooler_output
+        logits = self.classifier(image_features)
+        return logits
+
+# import torch
+# import torch.nn as nn
+# from transformers import CLIPModel
+
+# nclasses = 500  
+
+# class Net(nn.Module):
+
+#     def __init__(self):
+#         super(Net, self).__init__()
+#         self.model = CLIPModel.from_pretrained("laion/CLIP-ViT-H-14-laion2B-s32B-b79K")
+#         for param in self.model.parameters():
+#             param.requires_grad = False
+#         num_features = self.model.visual_projection.out_features
+#         self.classifier = nn.Linear(num_features, nclasses)
+#         for param in self.classifier.parameters():
+#             param.requires_grad = True
+
+#     def forward(self, x):
+#         image_features = self.model.get_image_features(pixel_values=x)
+#         image_features = image_features / image_features.norm(p=2, dim=-1, keepdim=True)
+#         x = self.classifier(image_features)
+#         return x
 
 # import torch.nn as nn
 # import open_clip

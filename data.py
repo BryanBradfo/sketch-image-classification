@@ -15,23 +15,60 @@ from torchvision import transforms
 
 # Transformations pour l'entraînement
 data_transforms = transforms.Compose([
-    transforms.RandomResizedCrop(224, scale=(0.8, 1.0), interpolation=transforms.InterpolationMode.BICUBIC),
+    transforms.RandomResizedCrop(224, scale=(0.8, 1.0)),
     transforms.RandomHorizontalFlip(),
     transforms.RandomRotation(15),
     transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1),
     transforms.ToTensor(),
-    transforms.Normalize(mean=[0.48145466, 0.4578275, 0.40821073],
-                         std=[0.26862954, 0.26130258, 0.27577711]),
+    transforms.Normalize(
+        mean=[0.48145466, 0.4578275, 0.40821073],
+        std=[0.26862954, 0.26130258, 0.27577711]
+    ),
 ])
 
 # Transformations pour la validation et le test
 data_transforms_val = transforms.Compose([
-    transforms.Resize(224, interpolation=transforms.InterpolationMode.BICUBIC),
+    transforms.Resize(224),
     transforms.CenterCrop(224),
     transforms.ToTensor(),
-    transforms.Normalize(mean=[0.48145466, 0.4578275, 0.40821073],
-                         std=[0.26862954, 0.26130258, 0.27577711]),
+    transforms.Normalize(
+        mean=[0.48145466, 0.4578275, 0.40821073],
+        std=[0.26862954, 0.26130258, 0.27577711]
+    ),
 ])
+
+
+
+
+
+
+# data_transforms_val = transforms.Compose([
+#     transforms.Resize((64, 64)),
+#     transforms.ToTensor(),
+#     transforms.Normalize(
+#         mean=[0.485, 0.456, 0.406],
+#         std=[0.229, 0.224, 0.225]
+#     )
+# ])
+
+# data_transforms = transforms.Compose([
+#     transforms.Resize((64, 64)),
+#     transforms.RandomHorizontalFlip(),
+#     transforms.RandomRotation(15),
+#     transforms.RandomAffine(degrees=0, translate=(0.1, 0.1), scale=(0.8, 1.2)),
+#     transforms.GaussianBlur(kernel_size=(5, 9), sigma=(0.1, 5)),
+#     transforms.ToTensor(),
+#     transforms.Normalize(
+#         mean=[0.485, 0.456, 0.406],
+#         std=[0.229, 0.224, 0.225]
+#     ),
+#     transforms.RandomErasing(p=0.2)  # adjust probability as needed
+# ])
+
+
+
+
+
 
 
 # data_train_transforms = transforms.Compose(
