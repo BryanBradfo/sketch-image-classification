@@ -43,25 +43,48 @@
 #         return x
 
 
+import torch
 import torch.nn as nn
-import open_clip
+from transformers import CLIPModel
 
-nclasses = 500
+nclasses = 500  
 
 class Net(nn.Module):
 
     def __init__(self):
         super(Net, self).__init__()
-        self.model, _, preprocess = open_clip.create_model_and_transforms('ViT-B-32', pretrained='openai')
-        # self.model, _, preprocess = open_clip.create_model_and_transforms('ViT-H-14-378-quickgelu', pretrained='openai')
-        num_features = self.model.visual.output_dim
-        self.classifier = nn.Linear(num_features, nclasses)
+        self.model = CLIPModel.from_pretrained("laion/CLIP-ViT-H-14-laion2B-s32B-b79K")
         for param in self.model.parameters():
             param.requires_grad = False
+        num_features = self.model.visual_projection.out_features
+        self.classifier = nn.Linear(num_features, nclasses)
         for param in self.classifier.parameters():
             param.requires_grad = True
 
     def forward(self, x):
-        x = self.model.encode_image(x)
-        x = self.classifier(x)
+        image_features = self.model.get_image_features(pixel_values=x)
+        image_features = image_features / image_features.norm(p=2, dim=-1, keepdim=True)
+        x = self.classifier(image_features)
         return x
+
+# import torch.nn as nn
+# import open_clip
+
+# nclasses = 500
+
+# class Net(nn.Module):
+
+#     def __init__(self):
+#         super(Net, self).__init__()
+#         self.model, _, preprocess = open_clip.create_model_and_transforms('ViT-B-32', pretrained='openai')
+#         num_features = self.model.visual.output_dim
+#         self.classifier = nn.Linear(num_features, nclasses)
+#         for param in self.model.parameters():
+#             param.requires_grad = False
+#         for param in self.classifier.parameters():
+#             param.requires_grad = True
+
+#     def forward(self, x):
+#         x = self.model.encode_image(x)
+#         x = self.classifier(x)
+#         return x

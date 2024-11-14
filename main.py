@@ -10,11 +10,18 @@ from torchvision import datasets
 
 from model_factory import ModelFactory
 from tqdm import tqdm
-
+import wandb
 
 def opts() -> argparse.ArgumentParser:
     """Option Handling Function."""
     parser = argparse.ArgumentParser(description="RecVis A3 training script")
+    parser.add_argument(
+        "--wandb_api_key",
+        type=str,
+        default=None,
+        metavar="WAPI",
+        help="API key for wandb",
+    )
     parser.add_argument(
         "--data",
         type=str,
@@ -105,6 +112,8 @@ def train(
     """
     model.train()
     correct = 0
+    total_loss = 0
+    total_samples = 0
     for batch_idx, (data, target) in enumerate(train_loader):
         if use_cuda:
             data, target = data.cuda(), target.cuda()
@@ -116,6 +125,8 @@ def train(
         optimizer.step()
         pred = output.data.max(1, keepdim=True)[1]
         correct += pred.eq(target.data.view_as(pred)).cpu().sum()
+        total_loss += loss.item() * data.size(0)
+        total_samples += data.size(0)
         if batch_idx % args.log_interval == 0:
             print(
                 "Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
@@ -126,6 +137,15 @@ def train(
                     loss.data.item(),
                 )
             )
+            # wandb.log({
+            #     "Train Loss": loss.item(),
+            #     "Train Accuracy": 100.0 * correct / total_samples,
+            #     "Epoch": epoch,
+            #     "Batch": batch_idx
+            # })
+            
+    epoch_loss = total_loss / len(train_loader.dataset)
+    epoch_accuracy = 100.0 * correct / len(train_loader.dataset)
     print(
         "\nTrain set: Accuracy: {}/{} ({:.0f}%)\n".format(
             correct,
@@ -133,6 +153,12 @@ def train(
             100.0 * correct / len(train_loader.dataset),
         )
     )
+    wandb.log({
+        "Train Epoch Loss": epoch_loss,
+        "Train Epoch Accuracy": epoch_accuracy,
+        "Epoch": epoch
+    })
+
 
 
 def validation(
@@ -165,6 +191,8 @@ def validation(
         correct += pred.eq(target.data.view_as(pred)).cpu().sum()
 
     validation_loss /= len(val_loader.dataset)
+    accuracy = 100.0 * correct / len(val_loader.dataset)
+
     print(
         "\nValidation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)".format(
             validation_loss,
@@ -173,6 +201,11 @@ def validation(
             100.0 * correct / len(val_loader.dataset),
         )
     )
+
+    wandb.log({
+        "Validation Loss": validation_loss,
+        "Validation Accuracy": accuracy,
+    })
     return validation_loss
 
 
@@ -180,6 +213,14 @@ def main():
     """Default Main Function."""
     # options
     args = opts()
+
+    if args.wandb_api_key:
+        wandb.login(key=args.wandb_api_key)
+    else:
+        wandb.login()
+
+    wandb.init(project='recvis2024', config=vars(args))
+
 
     # Check if cuda is available
     use_cuda = torch.cuda.is_available()
@@ -192,7 +233,7 @@ def main():
         os.makedirs(args.experiment)
 
     # load model and transform
-    model, data_transforms = ModelFactory(args.model_name).get_all()
+    model, data_transforms, val_transforms = ModelFactory(args.model_name).get_all()
     if use_cuda:
         print("Using GPU")
         model.cuda()
@@ -207,7 +248,7 @@ def main():
         num_workers=args.num_workers,
     )
     val_loader = torch.utils.data.DataLoader(
-        datasets.ImageFolder(args.data + "/val_images", transform=data_transforms),
+        datasets.ImageFolder(args.data + "/val_images", transform=val_transforms),
         batch_size=args.batch_size,
         shuffle=False,
         num_workers=args.num_workers,
@@ -239,6 +280,8 @@ def main():
             + best_model_file
             + "` to generate the Kaggle formatted csv file\n"
         )
+
+    wandb.finish()
 
 
 if __name__ == "__main__":
