@@ -4,6 +4,8 @@ import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.optim import AdamW
+
 from torchvision import datasets
 
 from model_factory import ModelFactory
@@ -213,6 +215,7 @@ def main():
 
     # Setup optimizer
     optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
+    # optimizer = AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr, weight_decay=1e-4)
 
     # Loop over the epochs
     best_val_loss = 1e8

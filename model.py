@@ -53,6 +53,7 @@ class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
         self.model, _, preprocess = open_clip.create_model_and_transforms('ViT-B-32', pretrained='openai')
+        # self.model, _, preprocess = open_clip.create_model_and_transforms('ViT-H-14-378-quickgelu', pretrained='openai')
         num_features = self.model.visual.output_dim
         self.classifier = nn.Linear(num_features, nclasses)
         for param in self.model.parameters():

@@ -16,7 +16,16 @@ import open_clip
 
 _, _, preprocess = open_clip.create_model_and_transforms('ViT-B-32', pretrained='openai')
 
-data_transforms = preprocess
+# data_transforms = preprocess
+
+data_transforms = transforms.Compose([
+    transforms.RandomResizedCrop(224, scale=(0.8, 1.0)),
+    transforms.RandomHorizontalFlip(),
+    transforms.RandomRotation(15),
+    transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=preprocess.transforms[-1].mean, std=preprocess.transforms[-1].std),
+])
 
 
 # data_train_transforms = transforms.Compose(
