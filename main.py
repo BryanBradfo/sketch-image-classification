@@ -219,7 +219,7 @@ def main():
     else:
         wandb.login()
 
-    wandb.init(project='recvis2024', name="efficientnetv2_l", config=vars(args))
+    wandb.init(project='recvis2024', name="clip-vit-large-patch14_openai", config=vars(args))
 
 
     # Check if cuda is available
