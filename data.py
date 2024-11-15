@@ -14,19 +14,28 @@ import torchvision.transforms as transforms
 from torchvision import transforms
 
 
+# data_transforms = transforms.Compose([
+#     transforms.RandomResizedCrop(224, scale=(0.5, 1.0)),
+#     transforms.RandomHorizontalFlip(),
+#     transforms.RandomVerticalFlip(),
+#     transforms.RandomRotation(30),
+#     transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
+#     transforms.RandomGrayscale(p=0.1),
+#     transforms.GaussianBlur(kernel_size=3),
+#     transforms.ToTensor(),
+#     transforms.Normalize(
+#         mean=[0.48145466, 0.4578275, 0.40821073],
+#         std=[0.26862954, 0.26130258, 0.27577711]
+#     ),
+# ])
+
 data_transforms = transforms.Compose([
-    transforms.RandomResizedCrop(224, scale=(0.5, 1.0)),
+    transforms.RandomResizedCrop(224, scale=(0.8, 1.0)),
     transforms.RandomHorizontalFlip(),
-    transforms.RandomVerticalFlip(),
-    transforms.RandomRotation(30),
-    transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
-    transforms.RandomGrayscale(p=0.1),
-    transforms.GaussianBlur(kernel_size=3),
+    transforms.RandomRotation(15),
+    transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1),
     transforms.ToTensor(),
-    transforms.Normalize(
-        mean=[0.48145466, 0.4578275, 0.40821073],
-        std=[0.26862954, 0.26130258, 0.27577711]
-    ),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 ])
 # data_transforms = transforms.Compose([
 #     transforms.RandomResizedCrop(224, scale=(0.8, 1.0)),
