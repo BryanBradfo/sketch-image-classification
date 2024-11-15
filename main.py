@@ -12,6 +12,9 @@ from model_factory import ModelFactory
 from tqdm import tqdm
 import wandb
 
+from torch.optim.lr_scheduler import CosineAnnealingLR
+
+
 def opts() -> argparse.ArgumentParser:
     """Option Handling Function."""
     parser = argparse.ArgumentParser(description="RecVis A3 training script")
@@ -95,6 +98,7 @@ def opts() -> argparse.ArgumentParser:
 def train(
     model: nn.Module,
     optimizer: torch.optim.Optimizer,
+    scheduler: torch.optim.lr_scheduler._LRScheduler,
     train_loader: torch.utils.data.DataLoader,
     use_cuda: bool,
     epoch: int,
@@ -119,7 +123,7 @@ def train(
             data, target = data.cuda(), target.cuda()
         optimizer.zero_grad()
         output = model(data)
-        criterion = torch.nn.CrossEntropyLoss(reduction="mean")
+        criterion = torch.nn.CrossEntropyLoss(reduction="mean", label_smoothing=0.1)
         loss = criterion(output, target)
         loss.backward()
         optimizer.step()
@@ -143,7 +147,8 @@ def train(
             #     "Epoch": epoch,
             #     "Batch": batch_idx
             # })
-            
+    
+    scheduler.step()
     epoch_loss = total_loss / len(train_loader.dataset)
     epoch_accuracy = 100.0 * correct / len(train_loader.dataset)
     print(
@@ -156,6 +161,7 @@ def train(
     wandb.log({
         "Train Epoch Loss": epoch_loss,
         "Train Epoch Accuracy": epoch_accuracy,
+        "Learning Rate": scheduler.get_last_lr()[0],
         "Epoch": epoch
     })
 
@@ -258,11 +264,14 @@ def main():
     # optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
     optimizer = AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr, weight_decay=1e-4)
 
+    scheduler = CosineAnnealingLR(optimizer, T_max=args.epochs)
+
     # Loop over the epochs
     best_val_loss = 1e8
     for epoch in range(1, args.epochs + 1):
         # training loop
-        train(model, optimizer, train_loader, use_cuda, epoch, args)
+        # train(model, optimizer, train_loader, use_cuda, epoch, args)
+        train(model, optimizer, scheduler, train_loader, use_cuda, epoch, args)
         # validation loop
         val_loss = validation(model, val_loader, use_cuda)
         if val_loss < best_val_loss:

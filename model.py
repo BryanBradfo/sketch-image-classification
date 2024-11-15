@@ -50,21 +50,27 @@ class Net(nn.Module):
         for param in self.clip_model.parameters():
             param.requires_grad = False
         image_embed_dim = self.clip_model.visual_projection.in_features
-        # self.classifier = nn.Sequential(
-        #     nn.Linear(image_embed_dim, 1024),
-        #     nn.ReLU(),
-        #     nn.Dropout(0.5),
-        #     nn.Linear(1024, num_classes)
-        # )
         self.classifier = nn.Sequential(
             nn.Linear(image_embed_dim, 1024),
             nn.ReLU(),
             nn.Dropout(0.5),
-            nn.Linear(1024, 512),
-            nn.ReLU(),
-            nn.Dropout(0.5),
-            nn.Linear(512, num_classes)
+            nn.Linear(1024, num_classes)
         )
+        # self.classifier = nn.Sequential(
+        #     nn.Linear(image_embed_dim, 2048),
+        #     nn.ReLU(),
+        #     nn.Dropout(0.5),
+        #     nn.Linear(2048, num_classes)
+        # )
+        # self.classifier = nn.Sequential(
+        #     nn.Linear(image_embed_dim, 1024),
+        #     nn.ReLU(),
+        #     nn.Dropout(0.5),
+        #     nn.Linear(1024, 512),
+        #     nn.ReLU(),
+        #     nn.Dropout(0.5),
+        #     nn.Linear(512, num_classes)
+        # )
 
     def forward(self, x):
         image_features = self.clip_model.vision_model(pixel_values=x).pooler_output
