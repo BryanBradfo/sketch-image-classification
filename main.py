@@ -123,7 +123,7 @@ def train(
             data, target = data.cuda(), target.cuda()
         optimizer.zero_grad()
         output = model(data)
-        criterion = torch.nn.CrossEntropyLoss(reduction="mean", label_smoothing=0.1)
+        criterion = torch.nn.CrossEntropyLoss(reduction="mean")
         loss = criterion(output, target)
         loss.backward()
         optimizer.step()
