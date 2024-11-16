@@ -282,14 +282,25 @@ def main():
             torch.save(model.state_dict(), best_model_file)
         # also save the model every epoch
         model_file = args.experiment + "/model_" + str(epoch) + ".pth"
-        torch.save(model.state_dict(), model_file)
-        print(
-            "Saved model to "
-            + model_file
-            + f". You can run `python evaluate.py --model_name {args.model_name} --model "
-            + best_model_file
-            + "` to generate the Kaggle formatted csv file\n"
-        )
+
+        if epoch % 5 == 0:
+            torch.save(model.state_dict(), model_file)
+            print(
+                "Saved model to "
+                + model_file
+                + f". You can run `python evaluate.py --model_name {args.model_name} --model "
+                + best_model_file
+                + "` to generate the Kaggle formatted csv file\n"
+            )
+
+        # torch.save(model.state_dict(), model_file)
+        # print(
+        #     "Saved model to "
+        #     + model_file
+        #     + f". You can run `python evaluate.py --model_name {args.model_name} --model "
+        #     + best_model_file
+        #     + "` to generate the Kaggle formatted csv file\n"
+        # )
 
     wandb.finish()
 
