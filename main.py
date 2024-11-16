@@ -225,7 +225,7 @@ def main():
     else:
         wandb.login()
 
-    wandb.init(project='recvis2024', name="clip-vit-large-patch14_openai", config=vars(args))
+    wandb.init(project='recvis2024', name="clip-vit-large-patch14_openai_adamw_betas9e-1n9_8e-1_eps1e-6_weightdecay_2e-1_train4last_transformaddvertical", config=vars(args))
 
 
     # Check if cuda is available
@@ -262,7 +262,8 @@ def main():
 
     # Setup optimizer
     # optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
-    optimizer = AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr, weight_decay=1e-4)
+    # optimizer = AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr, weight_decay=1e-4)
+    optimizer = AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr, betas=(0.9,0.98),eps=1e-6, weight_decay=0.2)
 
     scheduler = CosineAnnealingLR(optimizer, T_max=args.epochs)
 
