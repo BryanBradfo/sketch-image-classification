@@ -49,21 +49,21 @@ class Net(nn.Module):
         self.clip_model = CLIPModel.from_pretrained("openai/clip-vit-large-patch14")
         for param in self.clip_model.parameters():
             param.requires_grad = False
-        for param in self.clip_model.vision_model.encoder.layers[-3:].parameters():
+        for param in self.clip_model.vision_model.encoder.layers[-4:].parameters():
             param.requires_grad = True
         image_embed_dim = self.clip_model.visual_projection.in_features
-        self.classifier = nn.Sequential(
-            nn.Linear(image_embed_dim, 1024),
-            nn.ReLU(),
-            nn.Dropout(0.5),
-            nn.Linear(1024, num_classes)
-        )
         # self.classifier = nn.Sequential(
-        #     nn.Linear(image_embed_dim, 2048),
+        #     nn.Linear(image_embed_dim, 1024),
         #     nn.ReLU(),
         #     nn.Dropout(0.5),
-        #     nn.Linear(2048, num_classes)
+        #     nn.Linear(1024, num_classes)
         # )
+        self.classifier = nn.Sequential(
+            nn.Linear(image_embed_dim, 2048),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            nn.Linear(2048, num_classes)
+        )
         # self.classifier = nn.Sequential(
         #     nn.Linear(image_embed_dim, 1024),
         #     nn.ReLU(),
