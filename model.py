@@ -90,10 +90,10 @@ class Net(nn.Module):
         for param in self.model.parameters():
             param.requires_grad = False
         
-        for param in self.model.vision_model.encoder.layers[-3:].parameters():
+        for param in self.model.vision_model.encoder.layers[-2:].parameters():
             param.requires_grad = True
         
-        image_embed_dim = self.model.visual_projection.in_features
+        image_embed_dim = self.model.config.projection_dim
         
         self.classifier = nn.Sequential(
             nn.Linear(image_embed_dim, 1024),
