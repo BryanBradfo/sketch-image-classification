@@ -7,7 +7,6 @@ from transformers import CLIPModel, CLIPProcessor
 
 nclasses = 500
 
-
 # class Net(nn.Module):
 #     def __init__(self):
 #         super(Net, self).__init__()
@@ -24,6 +23,10 @@ nclasses = 500
 #         x = x.view(-1, 320)
 #         x = F.relu(self.fc1(x))
 #         return self.fc2(x)
+
+#######################################################
+### EfficientNet
+#######################################################
 
 # class Net(nn.Module):
 
@@ -43,36 +46,40 @@ nclasses = 500
 #         x = self.model(x)
 #         return x
 
-# class Net(nn.Module):
-#     def __init__(self, num_classes=500):
-#         super(Net, self).__init__()
-#         self.clip_model = CLIPModel.from_pretrained("openai/clip-vit-large-patch14")
-#         for param in self.clip_model.parameters():
-#             param.requires_grad = False
-#         for param in self.clip_model.vision_model.encoder.layers[-1:].parameters():
-#             param.requires_grad = True
-#         image_embed_dim = self.clip_model.visual_projection.in_features
-#         self.classifier = nn.Sequential(
-#             nn.Linear(image_embed_dim, 1024),
-#             nn.ReLU(),
-#             nn.Dropout(0.5),
-#             nn.Linear(1024, num_classes)
-#         )
+#######################################################
+### CLIP OpenAI
+#######################################################
 
-#         # self.classifier = nn.Sequential(
-#         #     nn.Linear(image_embed_dim, 2048),
-#         #     nn.ReLU(),
-#         #     nn.Dropout(0.5),
-#         #     nn.Linear(2048, 1024),
-#         #     nn.ReLU(),
-#         #     nn.Dropout(0.5),
-#         #     nn.Linear(1024, num_classes)
-#         # )
+class Net(nn.Module):
+    def __init__(self, num_classes=500):
+        super(Net, self).__init__()
+        self.clip_model = CLIPModel.from_pretrained("openai/clip-vit-large-patch14")
+        for param in self.clip_model.parameters():
+            param.requires_grad = False
+        for param in self.clip_model.vision_model.encoder.layers[-1:].parameters():
+            param.requires_grad = True
+        image_embed_dim = self.clip_model.visual_projection.in_features
+        self.classifier = nn.Sequential(
+            nn.Linear(image_embed_dim, 1024),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            nn.Linear(1024, num_classes)
+        )
 
-#     def forward(self, x):
-#         image_features = self.clip_model.vision_model(pixel_values=x).pooler_output
-#         logits = self.classifier(image_features)
-#         return logits
+        # self.classifier = nn.Sequential(
+        #     nn.Linear(image_embed_dim, 2048),
+        #     nn.ReLU(),
+        #     nn.Dropout(0.5),
+        #     nn.Linear(2048, 1024),
+        #     nn.ReLU(),
+        #     nn.Dropout(0.5),
+        #     nn.Linear(1024, num_classes)
+        # )
+
+    def forward(self, x):
+        image_features = self.clip_model.vision_model(pixel_values=x).pooler_output
+        logits = self.classifier(image_features)
+        return logits
 
 # import torch
 # import torch.nn as nn
@@ -98,30 +105,61 @@ nclasses = 500
 #         x = self.classifier(image_features)
 #         return x
 
+#######################################################
+### OpenCLIP LAIONB2B
+#######################################################
+
 import torch.nn as nn
 import open_clip
 
-class Net(nn.Module):
-    def __init__(self, num_classes=500):
-        super(Net, self).__init__()
-        self.model, _, _ = open_clip.create_model_and_transforms(
-            'ViT-g-14', pretrained='laion2b_s12b_b42k'
-        )
-        for param in self.model.parameters():
-            param.requires_grad = False
-        image_embed_dim = self.model.visual.output_dim
-        self.classifier = nn.Sequential(
-            nn.Linear(image_embed_dim, 1024),
-            nn.ReLU(),
-            nn.Dropout(0.5),
-            nn.Linear(1024, num_classes)
-        )
+# class Net(nn.Module):
+#     def __init__(self, num_classes=500):
+#         super(Net, self).__init__()
+#         self.model, _, _ = open_clip.create_model_and_transforms(
+#             'ViT-g-14', pretrained='laion2b_s12b_b42k'
+#         )
+#         for param in self.model.parameters():
+#             param.requires_grad = False
+#         image_embed_dim = self.model.visual.output_dim
+#         self.classifier = nn.Sequential(
+#             nn.Linear(image_embed_dim, 1024),
+#             nn.ReLU(),
+#             nn.Dropout(0.5),
+#             nn.Linear(1024, num_classes)
+#         )
 
-    def forward(self, x):
-        image_features = self.model.encode_image(x)
-        logits = self.classifier(image_features)
-        return logits
+#     def forward(self, x):
+#         image_features = self.model.encode_image(x)
+#         logits = self.classifier(image_features)
+#         return logits
 
+
+#######################################################
+### ViT Huge
+#######################################################
+
+# from transformers import ViTModel
+
+# class Net(nn.Module):
+#     def __init__(self, num_classes=500):
+#         super(Net, self).__init__()
+#         self.model = ViTModel.from_pretrained('google/vit-huge-patch14-224-in21k')
+
+#         for param in self.model.parameters():
+#             param.requires_grad = False
+#         image_embed_dim = self.model.config.hidden_size
+#         self.classifier = nn.Sequential(
+#             nn.Linear(image_embed_dim, 1024),
+#             nn.ReLU(),
+#             nn.Dropout(0.5),
+#             nn.Linear(1024, num_classes)
+#         )
+
+#     def forward(self, x):
+#         outputs = self.model(pixel_values=x)
+#         pooled_output = outputs.pooler_output  # [batch_size, hidden_size]
+#         logits = self.classifier(pooled_output)
+#         return logits
 
 # nclasses = 500
 
