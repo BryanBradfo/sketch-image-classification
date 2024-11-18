@@ -225,7 +225,7 @@ def main():
     else:
         wandb.login()
 
-    wandb.init(project='recvis2024', name="clip-vit-large-patch14_adamw_betas9e-1n9_8e-1_eps1e-6_weightdecay_2e-1_train4last_transformaddvertical", config=vars(args))
+    wandb.init(project='recvis2024', name="CLIP-ViT-H-14-laion2B-s32B-b79K_adamw_betas9e-1n9_8e-1_eps1e-6_weightdecay_2e-1_train4last_transformaddvertical", config=vars(args))
 
 
     # Check if cuda is available
