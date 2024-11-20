@@ -19,7 +19,7 @@ data_transforms = transforms.Compose([
     transforms.RandomResizedCrop(224, scale=(0.8, 1.0)),
     transforms.RandomHorizontalFlip(),
     transforms.RandomVerticalFlip(),
-    transforms.RandomRotation(15),
+    # transforms.RandomRotation(15),
     # AutoAugment(policy=AutoAugmentPolicy.IMAGENET),
     # transforms.RandomAffine(degrees=0, translate=(0.1, 0.1), scale=(0.8, 1.2)),
     # transforms.GaussianBlur(kernel_size=1),

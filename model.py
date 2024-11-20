@@ -55,7 +55,7 @@ nclasses = 500
 #         self.clip_model = CLIPModel.from_pretrained("openai/clip-vit-large-patch14")
 #         for param in self.clip_model.parameters():
 #             param.requires_grad = False
-#         for param in self.clip_model.vision_model.encoder.layers[-4:].parameters():
+#         for param in self.clip_model.vision_model.encoder.layers[-1:].parameters():
 #             param.requires_grad = True
 #         image_embed_dim = self.clip_model.visual_projection.in_features
 #         self.classifier = nn.Sequential(
@@ -80,21 +80,57 @@ nclasses = 500
 #         logits = self.classifier(image_features)
 #         return logits
 
+#######################################################
+### Using feature labels
+#######################################################
+
+# model.py
+
+# import torch
+# import torch.nn as nn
+
+# class Net(nn.Module):
+#     def __init__(self, input_dim=1024, num_classes=500):
+#         super(Net, self).__init__()
+#         self.classifier = nn.Sequential(
+#             nn.Linear(input_dim, 1024),
+#             nn.ReLU(),
+#             nn.Dropout(0.5),
+#             nn.Linear(1024, num_classes)
+#         )
+
+#     def forward(self, x):
+#         logits = self.classifier(x)
+#         return logits
+
 
 #######################################################
+### Using feature labels and contrastive learning
+#######################################################
+
+# model.py
+
+import torch
+import torch.nn as nn
+from transformers import CLIPModel
+
 class Net(nn.Module):
     def __init__(self, num_classes=500):
         super(Net, self).__init__()
-        self.model = CLIPModel.from_pretrained("laion/CLIP-ViT-H-14-laion2B-s32B-b79K")
-        
-        for param in self.model.parameters():
+        # Charger le modèle CLIP
+        self.clip_model = CLIPModel.from_pretrained("laion/CLIP-ViT-H-14-laion2B-s32B-b79K")
+
+        # Décongeler les dernières couches du modèle
+        for param in self.clip_model.parameters():
             param.requires_grad = False
-        
-        for param in self.model.vision_model.encoder.layers[-2:].parameters():
+
+        for param in self.clip_model.vision_model.encoder.layers[-3:].parameters():
             param.requires_grad = True
-        
-        image_embed_dim = self.model.config.projection_dim
-        
+
+        # Taille des embeddings
+        image_embed_dim = self.clip_model.config.vision_config.hidden_size  # Généralement 1024
+
+        # Classifieur pour la classification globale
         self.classifier = nn.Sequential(
             nn.Linear(image_embed_dim, 1024),
             nn.ReLU(),
@@ -102,11 +138,58 @@ class Net(nn.Module):
             nn.Linear(1024, num_classes)
         )
 
+        # Tête de projection pour l'apprentissage contrastif
+        self.projection_head = nn.Sequential(
+            nn.Conv1d(in_channels=image_embed_dim, out_channels=256, kernel_size=1),
+            nn.ReLU(),
+            nn.Conv1d(in_channels=256, out_channels=128, kernel_size=1)
+        )
+
     def forward(self, x):
-        image_features = self.model.get_image_features(pixel_values=x)
-        # image_features = image_features / image_features.norm(p=2, dim=-1, keepdim=True)
-        logits = self.classifier(image_features)
-        return logits
+        # Extraire les features locaux
+        vision_outputs = self.clip_model.vision_model(pixel_values=x, output_hidden_states=True, return_dict=True)
+        last_hidden_state = vision_outputs.last_hidden_state  # Shape: [batch_size, seq_len, hidden_size]
+
+        # Utiliser le [CLS] token pour la classification globale
+        cls_token = last_hidden_state[:, 0, :]  # Shape: [batch_size, hidden_size]
+        logits = self.classifier(cls_token)
+
+        # Projeter les features locaux pour l'apprentissage contrastif
+        # Ignorer le [CLS] token pour les features locaux
+        local_features = last_hidden_state[:, 1:, :]  # Shape: [batch_size, seq_len - 1, hidden_size]
+        local_features = local_features.permute(0, 2, 1)  # Shape: [batch_size, hidden_size, seq_len - 1]
+        projected_features = self.projection_head(local_features)  # Shape: [batch_size, 128, seq_len - 1]
+        projected_features = projected_features.permute(0, 2, 1)  # Shape: [batch_size, seq_len - 1, 128]
+
+        return logits, projected_features
+
+
+#######################################################
+### CLIP OpenAI with ViT-H/32 trained on Laion2B
+#######################################################
+
+# class Net(nn.Module):
+#     def __init__(self, num_classes=500):
+#         super(Net, self).__init__()
+#         self.model = CLIPModel.from_pretrained("laion/CLIP-ViT-H-14-laion2B-s32B-b79K")
+        
+#         for param in self.model.parameters():
+#             param.requires_grad = False
+        
+#         image_embed_dim = self.model.config.projection_dim
+        
+#         self.classifier = nn.Sequential(
+#             nn.Linear(image_embed_dim, 1024),
+#             nn.ReLU(),
+#             nn.Dropout(0.5),
+#             nn.Linear(1024, num_classes)
+#         )
+
+#     def forward(self, x):
+#         image_features = self.model.get_image_features(pixel_values=x)
+#         # image_features = image_features / image_features.norm(p=2, dim=-1, keepdim=True)
+#         logits = self.classifier(image_features)
+#         return logits
 
 
 #######################################################
