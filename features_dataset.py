@@ -6,7 +6,7 @@ from torch.utils.data import Dataset
 class FeaturesDataset(Dataset):
     def __init__(self, features_file):
         data = torch.load(features_file)
-        self.features = data['features']
+        self.features = data['image_features']
         self.labels = data['labels']
 
     def __len__(self):
