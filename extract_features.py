@@ -34,53 +34,53 @@ def connect_to_huggingface(token: str):
     except Exception as e:
         print(f"Error during login: {e}")
 
-# def opts():
-    # parser = argparse.ArgumentParser(description="Extraction of features")
-    # parser.add_argument(
-    #     "--hf_token",
-    #     type=str,
-    #     default="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",
-    #     required=True,
-    #     help="Hugging Face token. Generate it from https://huggingface.co/settings/tokens"
-    # )
-    # parser.add_argument(
-    #     "--data",
-    #     type=str,
-    #     default="/kaggle/input/mva-recvis-2024/sketch_recvis2024/sketch_recvis2024",
-    #     metavar="D",
-    #     help="Folder where data are stored. The folder train_images/ and val_images/ should be there.",
-    # )
-    # parser.add_argument(
-    #     "--batch-size",
-    #     type=int,
-    #     default=64,
-    #     metavar="B",
-    #     help="Size of batch for the extraction of features (default : 64)",
-    # )
-    # parser.add_argument(
-    #     "--num_workers",
-    #     type=int,
-    #     default=4,
-    #     metavar="NW",
-    #     help="Numbers of workers for data loading",
-    # )
-    # parser.add_argument(
-    #     "--output_dir",
-    #     type=str,
-    #     default="features",
-    #     metavar="O",
-    #     help="Path where to save the existing features",
-    # )
-    # args = parser.parse_args()
-    # connect_to_huggingface(args.hf_token)
-    # return args
+def opts():
+    parser = argparse.ArgumentParser(description="Extraction of features")
+    parser.add_argument(
+        "--hf_token",
+        type=str,
+        default="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",
+        required=True,
+        help="Hugging Face token. Generate it from https://huggingface.co/settings/tokens"
+    )
+    parser.add_argument(
+        "--data",
+        type=str,
+        default="/kaggle/input/mva-recvis-2024/sketch_recvis2024/sketch_recvis2024",
+        metavar="D",
+        help="Folder where data are stored. The folder train_images/ and val_images/ should be there.",
+    )
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=64,
+        metavar="B",
+        help="Size of batch for the extraction of features (default : 64)",
+    )
+    parser.add_argument(
+        "--num_workers",
+        type=int,
+        default=4,
+        metavar="NW",
+        help="Numbers of workers for data loading",
+    )
+    parser.add_argument(
+        "--output_dir",
+        type=str,
+        default="features",
+        metavar="O",
+        help="Path where to save the existing features",
+    )
+    args = parser.parse_args()
+    connect_to_huggingface(args.hf_token)
+    return args
 
 def custom_collate_fn(batch):
     images, labels = zip(*batch)
     return list(images), torch.tensor(labels)
 
 def main():
-    # args = opts()
+    args = opts()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     if not os.path.isdir("features"):
         os.makedirs("features")
