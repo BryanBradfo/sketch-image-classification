@@ -103,6 +103,28 @@ class Net(nn.Module):
         logits = self.classifier(x)
         return logits
 
+#######################################################
+### Using feature labels considering text labels
+#######################################################
+
+# import torch
+# import torch.nn as nn
+
+# class Net(nn.Module):
+#     def __init__(self, input_dim=2048, num_classes=500):
+#         super(Net, self).__init__()
+#         self.classifier = nn.Sequential(
+#             nn.Linear(input_dim, 1024),
+#             nn.ReLU(),
+#             nn.Dropout(0.5),
+#             nn.Linear(1024, num_classes)
+#         )
+
+#     def forward(self, image_feature, text_feature):
+#         x = torch.cat([image_feature, text_feature], dim=-1)
+#         logits = self.classifier(x)
+#         return logits
+
 
 #######################################################
 ### Using feature labels and contrastive learning
