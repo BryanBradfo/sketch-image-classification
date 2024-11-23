@@ -16,6 +16,7 @@ def load_eva_clip_model(ckpt_path, device='gpu'):
     model = create_model(
         'EVA02-CLIP-L-14-336',  # Model name as defined in the EVA code
         pretrained=False,
+        precision='fp16',
         device=device,
     )
     
