@@ -303,8 +303,11 @@ def main():
         os.makedirs(args.output_dir)
 
     # Charger le modèle CoCa et les transformations
-    model = CLIPModel.from_pretrained("UCSC-VLAA/ViT-H-14-CLIPA-336-laion2B")
-    preprocess = CLIPProcessor.from_pretrained("UCSC-VLAA/ViT-H-14-CLIPA-336-laion2B")
+    model = CLIPModel.from_pretrained("QuanSun/EVA-CLIP", model_name="EVA02_CLIP_L_psz14_224to336")
+    preprocess = CLIPProcessor.from_pretrained("QuanSun/EVA-CLIP", model_name="EVA02_CLIP_L_psz14_224to336")
+
+    # model = CLIPModel.from_pretrained("UCSC-VLAA/ViT-H-14-CLIPA-336-laion2B")
+    # preprocess = CLIPProcessor.from_pretrained("UCSC-VLAA/ViT-H-14-CLIPA-336-laion2B")
 
     # model, preprocess = create_model_from_pretrained('hf-hub:ViT-H-14-CLIPA-336')
     # tokenizer = get_tokenizer('hf-hub:ViT-H-14-CLIPA-336')
