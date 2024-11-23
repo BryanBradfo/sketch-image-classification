@@ -104,8 +104,8 @@ def main():
     ])
 
     # Appliquer les transformations du modèle CoCa lors du chargement des données
-    train_dataset = datasets.ImageFolder(os.path.join("./sketch_recvis2024/sketch_recvis2024", "train_images"), transform=data_transforms)
-    val_dataset = datasets.ImageFolder(os.path.join("./kaggle/input/mva-recvis-2024/sketch_recvis2024/sketch_recvis2024", "val_images"), transform=data_transforms)
+    train_dataset = datasets.ImageFolder(os.path.join(args.data, "train_images"), transform=data_transforms)
+    val_dataset = datasets.ImageFolder(os.path.join(args.data, "val_images"), transform=data_transforms)
 
     train_loader = DataLoader(train_dataset, batch_size=64, shuffle=False, num_workers=4)
     val_loader = DataLoader(val_dataset, batch_size=64, shuffle=False, num_workers=4)
