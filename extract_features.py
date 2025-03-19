@@ -1,100 +1,67 @@
 import argparse
 import os
+
 import torch
 from torchvision import datasets, transforms
-from transformers import CLIPModel, CLIPProcessor
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from huggingface_hub import login
-import sys
 
-sys.path.append(os.path.join(os.getcwd(), 'EVA', 'EVA-CLIP','rei'))
-from eva_clip import create_model
-
-def load_eva_clip_model(ckpt_path, device='gpu'):
-    # Create the model
-    model = create_model(
-        'EVA02-CLIP-L-14-336',  # Model name as defined in the EVA code
-        pretrained=False,
-        precision='fp16',
-        device=device,
-    )
-    
-    # Load the checkpoint
-    checkpoint = torch.load(ckpt_path, map_location=device)
-    model.to(device)
-    return model
-
-def connect_to_huggingface(token: str):
-    """
-    Connect to Hugging Face using the provided token.
-    """
-    try:
-        login(token=token)
-        print("Successfully connected to Hugging Face!")
-    except Exception as e:
-        print(f"Error during login: {e}")
+import timm
 
 def opts():
-    parser = argparse.ArgumentParser(description="Extraction of features")
-    parser.add_argument(
-        "--hf_token",
-        type=str,
-        default="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",
-        required=True,
-        help="Hugging Face token. Generate it from https://huggingface.co/settings/tokens"
-    )
-    parser.add_argument(
-        "--data",
-        type=str,
-        default="/kaggle/input/mva-recvis-2024/sketch_recvis2024/sketch_recvis2024",
-        metavar="D",
-        help="Folder where data are stored. The folder train_images/ and val_images/ should be there.",
-    )
-    parser.add_argument(
-        "--batch-size",
-        type=int,
-        default=64,
-        metavar="B",
-        help="Size of batch for the extraction of features (default : 64)",
-    )
-    parser.add_argument(
-        "--num_workers",
-        type=int,
-        default=4,
-        metavar="NW",
-        help="Numbers of workers for data loading",
-    )
-    parser.add_argument(
-        "--output_dir",
-        type=str,
-        default="features",
-        metavar="O",
-        help="Path where to save the existing features",
-    )
+    parser = argparse.ArgumentParser(description='Extract features using EVA-CLIP')
+    parser.add_argument('--data', type=str, default='data_sketches', metavar='D',
+                        help='Dossier où les données sont situées. train_images/ et val_images/ doivent s\'y trouver')
+    parser.add_argument('--output_dir', type=str, default='.', metavar='OUT',
+                        help='Dossier de sortie pour sauvegarder les caractéristiques')
+    parser.add_argument('--batch_size', type=int, default=64, metavar='B',
+                        help='Taille de lot pour le traitement des images')
+    parser.add_argument('--num_workers', type=int, default=4, metavar='NW',
+                        help='Nombre de workers pour le chargement des données')
     args = parser.parse_args()
-    connect_to_huggingface(args.hf_token)
     return args
-
-def custom_collate_fn(batch):
-    images, labels = zip(*batch)
-    return list(images), torch.tensor(labels)
 
 def main():
     args = opts()
+
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    if not os.path.isdir("features"):
-        os.makedirs("features")
 
-    # Charger le modèle CoCa et les transformations
-    model = load_eva_clip_model("EVA02_CLIP_L_336_psz14_s6B.pt", device) 
+    print(f'Utilisation du dispositif : {device}')
+
+    # model = timm.create_model('eva_giant_patch14_336', pretrained=True)
+    model = timm.create_model('eva_giant_patch14_336.clip_ft_in1k', pretrained=True)
     model.eval()
-
-    # Geler les paramètres du modèle
     for param in model.parameters():
         param.requires_grad = False
+    model.to(device)
+
+    # data_config = timm.data.resolve_model_data_config(model)
+    # timm_data_transforms = timm.data.create_transform(**data_config, is_training=False)
+
+    # default_cfg = model.default_cfg
+
+    # data_transforms = transforms.Compose([
+    #     transforms.Resize(default_cfg['input_size'][-2:]),
+    #     transforms.CenterCrop(default_cfg['input_size'][-2:]),
+    #     transforms.ToTensor(),
+    #     transforms.Normalize(
+    #         mean=default_cfg['mean'],
+    #         std=default_cfg['std']
+    #     ),
+    # ])
 
     data_transforms = transforms.Compose([
+        transforms.Resize(336),
+        transforms.RandomResizedCrop(336),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        transforms.Normalize(
+            mean=[0.48145466, 0.4578275, 0.40821073],
+            std=[0.26862954, 0.26130258, 0.27577711]
+        ),
+    ])
+
+    data_transforms_val = transforms.Compose([
         transforms.Resize(336),
         transforms.CenterCrop(336),
         transforms.ToTensor(),
@@ -104,51 +71,48 @@ def main():
         ),
     ])
 
-    # Appliquer les transformations du modèle CoCa lors du chargement des données
+    print(os.path.join(args.data, 'train_images'))
     train_dataset = datasets.ImageFolder(os.path.join(args.data, "train_images"), transform=data_transforms)
-    val_dataset = datasets.ImageFolder(os.path.join(args.data, "val_images"), transform=data_transforms)
+    val_dataset = datasets.ImageFolder(os.path.join(args.data, "val_images"), transform=data_transforms_val)
 
-    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=False, num_workers=4)
-    val_loader = DataLoader(val_dataset, batch_size=64, shuffle=False, num_workers=4)
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
+    val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
 
-    print("Extraction des features pour le jeu d'entraînement...")
-    train_image_features = []
-    train_labels = []
+    print('Extraction des caractéristiques des données d\'entraînement...')
+    train_features, train_labels = extract_features(model, train_loader, device)
+    print('Extraction des caractéristiques des données de validation...')
+    val_features, val_labels = extract_features(model, val_loader, device)
 
-    with torch.no_grad():
-        for images, labels in tqdm(train_loader):
-            images = images.to(device).half()
-            image_features = model.encode_image(images)
-            image_features = image_features
-            train_image_features.append(image_features)
-            train_labels.append(labels)
+    os.makedirs(args.output_dir, exist_ok=True)
+    train_output_file = os.path.join(args.output_dir, 'train_features.pt')
+    val_output_file = os.path.join(args.output_dir, 'val_features.pt')
 
-    train_image_features = torch.cat(train_image_features, dim=0)
-    train_labels = torch.cat(train_labels, dim=0)
+    torch.save({'image_features': train_features, 'labels': train_labels}, train_output_file)
+    torch.save({'image_features': val_features, 'labels': val_labels}, val_output_file)
 
-    # Sauvegarder les features et labels
-    torch.save({'image_features': train_image_features, 'labels': train_labels}, os.path.join("features", 'train_features.pth'))
+    print(f'Caractéristiques d\'entraînement sauvegardées dans {train_output_file}')
+    print(f'Caractéristiques de validation sauvegardées dans {val_output_file}')
 
-    print("Extraction of features for the validation dataset...")
-    val_image_features = []
-    val_labels = []
+def extract_features(model, data_loader, device):
+    features_list = []
+    labels_list = []
 
     with torch.no_grad():
-        for images, labels in tqdm(val_loader):
-            # Appliquer le processor aux images
-            images = images.to(device).half()
-            image_features = model.encode_image(images)
-            image_features = image_features
-            val_image_features.append(image_features)
-            val_labels.append(labels)
+        for data, labels in tqdm(data_loader):
+            data = data.to(device)
+            labels = labels.to(device)
 
-    val_image_features = torch.cat(val_image_features, dim=0)
-    val_labels = torch.cat(val_labels, dim=0)
+            features = model.forward_features(data)
+            features = model.forward_head(features, pre_logits=True)
 
-    # Sauvegarder les features et labels
-    torch.save({'image_features': val_image_features, 'labels': val_labels}, os.path.join("features", 'val_features.pth'))
+            features_list.append(features.cpu())
+            labels_list.append(labels.cpu())
 
-    print("Extraction of features is done.")
+    features = torch.cat(features_list)
+    labels = torch.cat(labels_list)
 
-if __name__ == "__main__":
+    print(f'Caractéristiques extraites de forme : {features.shape}')
+    return features, labels
+
+if __name__ == '__main__':
     main()

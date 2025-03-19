@@ -84,8 +84,6 @@ nclasses = 500
 ### Using feature labels
 #######################################################
 
-# model.py
-
 import torch
 import torch.nn as nn
 
@@ -130,8 +128,6 @@ class Net(nn.Module):
 ### Using feature labels and contrastive learning
 #######################################################
 
-# model.py
-
 # import torch
 # import torch.nn as nn
 # import torch.nn.functional as F
@@ -159,16 +155,11 @@ class Net(nn.Module):
 #         )
 
 #     def forward(self, x):
-#         # Obtenir les outputs du vision transformer avec les hidden states
 #         vision_outputs = self.clip_model.vision_model(pixel_values=x, output_hidden_states=True)
-#         # Obtenir le dernier hidden state (embeddings des patches)
 #         last_hidden_state = vision_outputs.last_hidden_state  # [batch_size, num_patches + 1, hidden_dim]
-#         # Le premier token est le [CLS] token
 #         cls_embeddings = last_hidden_state[:, 0, :]  # [batch_size, hidden_dim]
 #         patch_embeddings = last_hidden_state[:, 1:, :]  # [batch_size, num_patches, hidden_dim]
-#         # Projeter le CLS embedding pour obtenir les features d'images
 #         image_features = self.clip_model.visual_projection(cls_embeddings)
-#         # Calculer les logits de classification
 #         logits = self.classifier(image_features)
 #         return logits, patch_embeddings
 

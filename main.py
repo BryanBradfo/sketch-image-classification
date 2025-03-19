@@ -16,61 +16,11 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 
 from features_dataset import FeaturesDataset  
 from model import Net 
-
+import matplotlib.pyplot as plt
 import numpy as np
-
-class TwoCropsTransform:
-    """Créer deux augmentations d'une même image."""
-    def __init__(self, base_transform):
-        self.base_transform = base_transform
-
-    def __call__(self, x):
-        xi = self.base_transform(x)
-        xj = self.base_transform(x)
-        return xi, xj
-    
+from PIL import Image
 
 import torch.nn.functional as F
-
-def compute_dense_contrastive_loss(patches_i, patches_j, temperature=0.1):
-    """
-    Calculer la perte contrastive dense entre les embeddings de patches.
-    patches_i, patches_j: [batch_size, num_patches, hidden_dim]
-    """
-    batch_size, num_patches, hidden_dim = patches_i.size()
-    
-    # Normaliser les embeddings
-    patches_i = F.normalize(patches_i, dim=2)
-    patches_j = F.normalize(patches_j, dim=2)
-    
-    # Reshaper pour avoir [batch_size * num_patches, hidden_dim]
-    z_i = patches_i.view(-1, hidden_dim)
-    z_j = patches_j.view(-1, hidden_dim)
-    
-    # Calculer les similitudes
-    logits = torch.matmul(z_i, z_j.T) / temperature  # [B*N, B*N]
-    
-    # Créer les étiquettes positives (positions diagonales)
-    labels = torch.arange(z_i.size(0)).to(z_i.device)
-    
-    # Calculer la perte
-    loss = F.cross_entropy(logits, labels)
-    return loss
-
-    
-def mixup_data(x, y, alpha=1.0):
-    if alpha > 0:
-        lam = np.random.beta(alpha, alpha)
-    else:
-        lam = 1.0
-    
-    batch_size = x.size(0)
-    index = torch.randperm(batch_size).to(x.device)
-    
-    mixed_x = lam * x + (1 - lam) * x[index, :]
-    y_a, y_b = y, y[index]
-    
-    return mixed_x, y_a, y_b, lam
 
 def opts() -> argparse.ArgumentParser:
     """Option Handling Function."""
@@ -148,12 +98,15 @@ def opts() -> argparse.ArgumentParser:
         metavar="NW",
         help="number of workers for data loading",
     )
+    parser.add_argument(
+        "--image_folder",
+        type=str,
+        default="data_sketches",
+        metavar="IF",
+        help="folder where original images are located",
+    )
     args = parser.parse_args()
     return args
-
-############################################################################################################
-# VERSION WITH ONLY IMAGE FEATURES
-############################################################################################################
 
 def train(
     model: nn.Module,
@@ -220,122 +173,6 @@ def train(
         "Epoch": epoch
     })
 
-############################################################################################################
-# VERSION WITH IMAGE AND TEXT FEATURES
-############################################################################################################
-
-# def train(
-#     model: nn.Module,
-#     optimizer: torch.optim.Optimizer,
-#     scheduler: torch.optim.lr_scheduler._LRScheduler,
-#     train_loader: torch.utils.data.DataLoader,
-#     use_cuda: bool,
-#     epoch: int,
-#     args: argparse.ArgumentParser,
-# ) -> None:
-#     model.train()
-#     correct = 0
-#     total_loss = 0
-#     total_samples = 0
-#     for batch_idx, (image_features, text_features, target) in enumerate(train_loader):
-#         if use_cuda:
-#             image_features = image_features.cuda()
-#             text_features = text_features.cuda()
-#             target = target.cuda()
-        
-#         optimizer.zero_grad()
-#         output = model(image_features, text_features)
-#         criterion = torch.nn.CrossEntropyLoss(reduction="mean")
-#         loss = criterion(output, target)
-#         loss.backward()
-#         optimizer.step()
-#         pred = output.data.max(1, keepdim=True)[1]
-#         correct += pred.eq(target.data.view_as(pred)).cpu().sum()
-#         total_loss += loss.item() * image_features.size(0)
-#         total_samples += image_features.size(0)
-#         if batch_idx % args.log_interval == 0:
-#             print(
-#                 "Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
-#                     epoch,
-#                     batch_idx * len(image_features),
-#                     len(train_loader.dataset),
-#                     100.0 * batch_idx / len(train_loader),
-#                     loss.data.item(),
-#                 )
-#             )
-    
-#     scheduler.step()
-#     epoch_loss = total_loss / len(train_loader.dataset)
-#     epoch_accuracy = 100.0 * correct / len(train_loader.dataset)
-#     print(
-#         "\nTrain set: Accuracy: {}/{} ({:.0f}%)\n".format(
-#             correct,
-#             len(train_loader.dataset),
-#             100.0 * correct / len(train_loader.dataset),
-#         )
-#     )
-#     wandb.log({
-#         "Train Epoch Loss": epoch_loss,
-#         "Train Epoch Accuracy": epoch_accuracy,
-#         "Learning Rate": scheduler.get_last_lr()[0],
-#         "Epoch": epoch
-#     })
-
-
-############################################################################################################
-# VERSION WITH IMAGE AND TEXT FEATURES
-############################################################################################################
-
-# def validation(
-#     model: nn.Module,
-#     val_loader: torch.utils.data.DataLoader,
-#     use_cuda: bool,
-# ) -> float:
-#     """Default Validation Loop.
-
-#     Args:
-#         model (nn.Module): Model to train
-#         val_loader (torch.utils.data.DataLoader): Validation data loader
-#         use_cuda (bool): Whether to use cuda or not
-
-#     Returns:
-#         float: Validation loss
-#     """
-#     model.eval()
-#     validation_loss = 0
-#     correct = 0
-#     for data, text, target in val_loader:
-#         if use_cuda:
-#             data, text, target = data.cuda(), text.cuda(), target.cuda()
-#         output = model(data,)
-#         # sum up batch loss
-#         criterion = torch.nn.CrossEntropyLoss(reduction="mean")
-#         validation_loss += criterion(output, target).data.item()
-#         # get the index of the max log-probability
-#         pred = output.data.max(1, keepdim=True)[1]
-#         correct += pred.eq(target.data.view_as(pred)).cpu().sum()
-
-#     validation_loss /= len(val_loader.dataset)
-#     accuracy = 100.0 * correct / len(val_loader.dataset)
-
-#     print(
-#         "\nValidation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)".format(
-#             validation_loss,
-#             correct,
-#             len(val_loader.dataset),
-#             100.0 * correct / len(val_loader.dataset),
-#         )
-#     )
-
-#     wandb.log({
-#         "Validation Loss": validation_loss,
-#         "Validation Accuracy": accuracy,
-#     })
-#     return validation_loss
-
-############################################################################################################
-# VERSION WITH ONLY IMAGE FEATURES VALIDATION
-############################################################################################################
 
 def validation(
     model: nn.Module,
@@ -355,7 +192,9 @@ def validation(
     model.eval()
     validation_loss = 0
     correct = 0
-    for data, target in val_loader:
+    misclassified_info = []
+
+    for batch_idx, (data, target) in enumerate(val_loader):
         if use_cuda:
             data, target = data.cuda(), target.cuda()
         output = model(data)
@@ -365,6 +204,11 @@ def validation(
         # get the index of the max log-probability
         pred = output.data.max(1, keepdim=True)[1]
         correct += pred.eq(target.data.view_as(pred)).cpu().sum()
+
+        # misclassified = (pred != target.data.view_as(pred)).nonzero(as_tuple=True)[0]
+        # for idx in misclassified:
+        #     misclassified_info.append((batch_idx * val_loader.batch_size + idx.item(), target[idx].item(), pred[idx].item()))
+
 
     validation_loss /= len(val_loader.dataset)
     accuracy = 100.0 * correct / len(val_loader.dataset)
@@ -384,6 +228,41 @@ def validation(
     })
     return validation_loss
 
+def visualize_misclassified_images(misclassified_info, val_dataset, image_folder, num_images=5):
+    transform = transforms.Compose([
+        transforms.Resize(256),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+    ])
+
+    fig, axes = plt.subplots(num_images, 2, figsize=(10, 5 * num_images))
+    for i, (idx, true_label, pred_label) in enumerate(misclassified_info[:num_images]):
+        img_path = val_dataset.samples[idx][0]
+        img = Image.open(img_path).convert("RGB")
+        img = transform(img)
+        img = img.permute(1, 2, 0).numpy()
+
+        true_label_path = os.path.join(image_folder, val_dataset.classes[true_label])
+        true_label_img = Image.open(true_label_path).convert("RGB")
+        true_label_img = transform(true_label_img)
+        true_label_img = true_label_img.permute(1, 2, 0).numpy()
+
+        pred_label_path = os.path.join(image_folder, val_dataset.classes[pred_label])
+        pred_label_img = Image.open(pred_label_path).convert("RGB")
+        pred_label_img = transform(pred_label_img)
+        pred_label_img = pred_label_img.permute(1, 2, 0).numpy()
+
+        axes[i, 0].imshow(img)
+        axes[i, 0].axis('off')
+        axes[i, 0].set_title(f'True: {true_label}')
+
+        axes[i, 1].imshow(pred_label_img)
+        axes[i, 1].axis('off')
+        axes[i, 1].set_title(f'Pred: {pred_label}')
+
+    plt.tight_layout()
+    plt.show()
+
 def main():
     args = opts()
 
@@ -392,7 +271,7 @@ def main():
     else:
         wandb.login()
 
-    wandb.init(project='recvis2024', name="CLIP-ViT-H-14-laion2B-s32B-b79K_with_img_feature_labels_AdamW", config=vars(args))
+    wandb.init(project='recvis2024', name="Eva-Clip_with_img_feature_labels_AdamW", config=vars(args))
 
     use_cuda = torch.cuda.is_available()
     device = torch.device('cuda' if use_cuda else 'cpu')
@@ -402,13 +281,11 @@ def main():
     if not os.path.isdir(args.experiment):
         os.makedirs(args.experiment)
 
-    # Charger le modèle (classifieur uniquement)
-    model = Net(input_dim=1024, num_classes=500)
+    model = Net(input_dim=1408, num_classes=500)
     model.to(device)
 
-    # Charger les datasets de features
-    train_dataset = FeaturesDataset(os.path.join(args.data, 'train_features.pth'))
-    val_dataset = FeaturesDataset(os.path.join(args.data, 'val_features.pth'))
+    train_dataset = FeaturesDataset(os.path.join(args.data, 'train_features.pt'))
+    val_dataset = FeaturesDataset(os.path.join(args.data, 'val_features.pt'))
 
     train_loader = torch.utils.data.DataLoader(
         train_dataset,
@@ -423,209 +300,29 @@ def main():
         num_workers=args.num_workers,
     )
 
-    # Configurer l'optimiseur et le scheduler
-    optimizer = AdamW(model.parameters(), lr=args.lr, betas=(0.9, 0.98), eps=1e-6, weight_decay=0.5)
-    scheduler = CosineAnnealingLR(optimizer, T_max=args.epochs)
-
-    # Boucle d'entraînement
+    optimizer = AdamW(model.parameters(), lr=args.lr)
+    # scheduler = CosineAnnealingLR(optimizer, T_max=args.epochs)
+    scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, 
+                                                    steps_per_epoch=len(train_loader), 
+                                                    max_lr=3e-4, 
+                                                    pct_start=0.1,
+                                                    epochs=30,
+                                                    anneal_strategy='cos')
     best_val_loss = float('inf')
     for epoch in range(1, args.epochs + 1):
-        # Entraînement
         train(model, optimizer, scheduler, train_loader, use_cuda, epoch, args)
-        # Validation
         val_loss = validation(model, val_loader, use_cuda)
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             best_model_file = os.path.join(args.experiment, "model_best.pth")
             torch.save(model.state_dict(), best_model_file)
-        # Sauvegarder le modèle à chaque époque (optionnel)
-        # if epoch % 5 == 0:
+
         model_file = os.path.join(args.experiment, f"model_{epoch}.pth")
         torch.save(model.state_dict(), model_file)
         print(f"Saved model to {model_file}")
 
+
     wandb.finish()
-
-############################################################################################################
-# MAIN WITH FEATURE LABELS
-################################################################################################
-
-# def main():
-#     """Default Main Function."""
-#     # options
-#     args = opts()
-
-#     if args.wandb_api_key:
-#         wandb.login(key=args.wandb_api_key)
-#     else:
-#         wandb.login()
-
-#     wandb.init(project='recvis2024', name="CLIP-ViT-H-14-laion2B-s32B-b79K", config=vars(args))
-
-#     # Check if cuda is available
-#     use_cuda = torch.cuda.is_available()
-
-#     # Set the seed (for reproducibility)
-#     torch.manual_seed(args.seed)
-
-#     # Create experiment folder
-#     if not os.path.isdir(args.experiment):
-#         os.makedirs(args.experiment)
-
-#     # load model and transform
-#     # model, data_transforms, val_transforms = ModelFactory(args.model_name).get_all()
-#     model = Net(input_dim=1024, num_classes=500)
-    
-#     if use_cuda:
-#         print("Using GPU")
-#         model.cuda()
-#     else:
-#         print("Using CPU")
-
-#     train_dataset = FeaturesDataset(os.path.join(args.data, 'train_features.pth'))
-#     val_dataset = FeaturesDataset(os.path.join(args.data, 'val_features.pth'))
-
-#     train_loader = torch.utils.data.DataLoader(
-#         train_dataset,
-#         batch_size=args.batch_size,
-#         shuffle=True,
-#         num_workers=args.num_workers,
-#     )
-#     val_loader = torch.utils.data.DataLoader(
-#         val_dataset,
-#         batch_size=args.batch_size,
-#         shuffle=False,
-#         num_workers=args.num_workers,
-#     )
-#     # # Data initialization and loading
-#     # train_loader = torch.utils.data.DataLoader(
-#     #     datasets.ImageFolder(args.data + "/train_images", transform=data_transforms),
-#     #     batch_size=args.batch_size,
-#     #     shuffle=True,
-#     #     num_workers=args.num_workers,
-#     # )
-#     # val_loader = torch.utils.data.DataLoader(
-#     #     datasets.ImageFolder(args.data + "/val_images", transform=val_transforms),
-#     #     batch_size=args.batch_size,
-#     #     shuffle=False,
-#     #     num_workers=args.num_workers,
-#     # )
-
-#     # Setup optimizer
-#     optimizer = AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr, betas=(0.9,0.98),eps=1e-6, weight_decay=0.4)
-
-#     scheduler = CosineAnnealingLR(optimizer, T_max=args.epochs)
-
-#     # Loop over the epochs
-#     best_val_loss = 1e8
-#     for epoch in range(1, args.epochs + 1):
-#         # training loop
-#         # train(model, optimizer, train_loader, use_cuda, epoch, args)
-#         train(model, optimizer, scheduler, train_loader, use_cuda, epoch, args)
-#         # validation loop
-#         val_loss = validation(model, val_loader, use_cuda)
-#         if val_loss < best_val_loss:
-#             # save the best model for validation
-#             best_val_loss = val_loss
-#             best_model_file = args.experiment + "/model_best.pth"
-#             torch.save(model.state_dict(), best_model_file)
-#         # also save the model every epoch
-#         model_file = args.experiment + "/model_" + str(epoch) + ".pth"
-
-#         # if epoch % 5 == 0:
-#         torch.save(model.state_dict(), model_file)
-#         print(
-#             "Saved model to "
-#             + model_file
-#             + f". You can run `python evaluate.py --model_name {args.model_name} --model "
-#             + best_model_file
-#             + "` to generate the Kaggle formatted csv file\n"
-#         )
-
-#     wandb.finish()
-
-
-############################################################################################################
-# MAIN OLD VERSION
-################################################################################################
-
-# def main():
-#     """Default Main Function."""
-#     # options
-#     args = opts()
-
-#     if args.wandb_api_key:
-#         wandb.login(key=args.wandb_api_key)
-#     else:
-#         wandb.login()
-
-#     wandb.init(project='recvis2024', name="CLIP-ViT-H-14-laion2B-s32B-b79K_adamw_betas9e-1n9_8e-1_eps1e-6_weightdecay_2e-1_with_feature_label", config=vars(args))
-
-#     # Check if cuda is available
-#     use_cuda = torch.cuda.is_available()
-
-#     # Set the seed (for reproducibility)
-#     torch.manual_seed(args.seed)
-
-#     # Create experiment folder
-#     if not os.path.isdir(args.experiment):
-#         os.makedirs(args.experiment)
-
-#     # load model and transform
-#     model, data_transforms, val_transforms = ModelFactory(args.model_name).get_all()
-#     if use_cuda:
-#         print("Using GPU")
-#         model.cuda()
-#     else:
-#         print("Using CPU")
-
-#     # Data initialization and loading
-#     train_loader = torch.utils.data.DataLoader(
-#         datasets.ImageFolder(args.data + "/train_images", transform=data_transforms),
-#         batch_size=args.batch_size,
-#         shuffle=True,
-#         num_workers=args.num_workers,
-#     )
-#     val_loader = torch.utils.data.DataLoader(
-#         datasets.ImageFolder(args.data + "/val_images", transform=val_transforms),
-#         batch_size=args.batch_size,
-#         shuffle=False,
-#         num_workers=args.num_workers,
-#     )
-
-#     # Setup optimizer
-#     optimizer = AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr, betas=(0.9,0.98),eps=1e-6, weight_decay=0.2)
-
-#     scheduler = CosineAnnealingLR(optimizer, T_max=args.epochs)
-
-#     # Loop over the epochs
-#     best_val_loss = 1e8
-#     for epoch in range(1, args.epochs + 1):
-#         # training loop
-#         # train(model, optimizer, train_loader, use_cuda, epoch, args)
-#         train(model, optimizer, scheduler, train_loader, use_cuda, epoch, args)
-#         # validation loop
-#         val_loss = validation(model, val_loader, use_cuda)
-#         if val_loss < best_val_loss:
-#             # save the best model for validation
-#             best_val_loss = val_loss
-#             best_model_file = args.experiment + "/model_best.pth"
-#             torch.save(model.state_dict(), best_model_file)
-#         # also save the model every epoch
-#         model_file = args.experiment + "/model_" + str(epoch) + ".pth"
-
-#         # if epoch % 5 == 0:
-#         torch.save(model.state_dict(), model_file)
-#         print(
-#             "Saved model to "
-#             + model_file
-#             + f". You can run `python evaluate.py --model_name {args.model_name} --model "
-#             + best_model_file
-#             + "` to generate the Kaggle formatted csv file\n"
-#         )
-
-#     wandb.finish()
-
 
 if __name__ == "__main__":
     main()
