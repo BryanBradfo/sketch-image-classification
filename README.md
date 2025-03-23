@@ -16,7 +16,7 @@ We will be using a dataset containing 500 different classes of sketches adapted 
 Download the training/validation/test images from [here](https://www.kaggle.com/competitions/mva-recvis-2024/data). The test image labels are not provided.
 
 ## Training and validating your model
-Run the script `main.py` to train your model.
+Run the script `main.py` to train your model. By default, I compute EVA-CLIP features and then I train a little classification head. 
 
 ## If you wanna try the challange as well
 
